@@ -912,7 +912,7 @@ def generate_annotated_report(config, final_targets_input_folder, conserved_targ
     
     print(f"[{get_timestamp()}] ✅ Done! You have {len(final_df)} annotated candidates ready for synthesis.")
 
-def apply_text_biosafety_filter(input_folder, output_folder):
+def apply_text_biosafety_filter(input_folder, output_folder, blacklist_list=None):
     """
     Post-processing filter.
     Reads the annotated report and removes targets with descriptions matching specific
@@ -935,17 +935,11 @@ def apply_text_biosafety_filter(input_folder, output_folder):
         print(f"[{get_timestamp()}] Error reading CSV: {e}")
         return
 
-    # --- THE BLACKLIST ---
-    # Termos que indicam genes universais ou de risco regulatório
-    risky_terms = [
-        'ribosom', 'actin', 'tubulin', 'histone', 'ubiquitin', 
-        'elongation factor', 'atp synthase', 'dynein', 'myosin', 
-        'kinase', 'phosphatase', 'polymerase', 'dehydrogenase', 
-        'heat shock', 'chaperone', 'hsp70', 'gapdh', 
-        'glyceraldehyde-3-phosphate', 'synthase subunit' 
-        # Nota: 'synthase subunit' pega ATP synthase e Citrate synthase, 
-        # mas cuidado para não pegar quitina sintase (geralmente não tem 'subunit' no nome)
-    ]
+    # Se o usuário não passou lista, usa uma padrão ou vazia
+    if blacklist_list is None:
+        risky_terms = ['ribosom', 'actin', 'tubulin'] # Padrão mínimo
+    else:
+        risky_terms = blacklist_list
 
     print(f"[{get_timestamp()}] Risky terms: {risky_terms}")
     

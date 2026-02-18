@@ -1,0 +1,23 @@
+name: rnai_pipeline
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  # 1. Core Python Version
+  - python=3.10
+
+  # 2. Python Libraries
+  - pandas
+  - biopython>=1.81
+  - pyyaml
+  - numpy
+
+  # 3. EXTERNAL BIOINFORMATICS TOOLS (Essential for pipeline execution)
+  # These binaries are required. Using Conda ensures the user gets the correct versions.
+  - blast>=2.15.0          # Installs 'blastn' and 'makeblastdb'
+  - clustalo>=1.2.4        # Clustal Omega for Multiple Sequence Alignment
+  - ncbi-datasets-cli      # Official NCBI tool to download genomes
+
+  # 4. System Utilities
+  - zip                    # Required for robust zip file handling across OS

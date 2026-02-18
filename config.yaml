@@ -17,10 +17,13 @@ main_species: "Colletotrichum abscissum"
 # This ensures broad-spectrum activity within the genus.
 conservation_targets:
   - "Colletotrichum abscissum"
-  - "Colletotrichum gloeosporioides"
-  - "Colletotrichum nymphaeae"
+  - "Colletotrichum acutatum"
   - "Colletotrichum godetiae"
-  - "Colletotrichum fioriniae"
+  - "Colletotrichum karsti"
+  - "Colletotrichum fructicola"
+  - "Colletotrichum gloeosporioides"
+  - "Colletotrichum siamense"
+  - "Colletotrichum truncatum"
 
 # --- 2. BIOSAFETY (Off-Target Analysis) ---
 # List of non-target organisms (plants, pollinators, humans).
@@ -34,7 +37,7 @@ off_target_species:
   - "Harmonia axyridis"     # Ladybug (Predator)
   - "Chrysoperla carnea"    # Lacewing (Predator)
   - "Nasonia vitripennis"   # Parasitoid Wasp
-  - "Caenorhabditis elegans"# Soil Nematode model
+  - "Caenorhabditis elegans" # Soil Nematode model
   - "Danio rerio"           # Zebrafish (Aquatic model)
 
 # --- 3. BLAST PARAMETERS (Ortholog Finding) ---
@@ -49,19 +52,19 @@ blast_orthologs:
 # Parameters to scan the Multiple Sequence Alignment (MSA).
 conservation_scan:
   min_conserved_length: 60  # Minimum dsRNA length (bp). Industry standard is >60bp.
-  conservation_threshold: 100 # Percent match required across all fungi (100 = identical)
+  conservation_threshold: 95 # Percent match required across all fungi (100 = identical)
 
 # --- 5. BIOSAFETY THRESHOLDS (The "Risk" Definition) ---
 # These parameters define what constitutes a "dangerous match" in off-target species.
 # Based on RNAi biology mechanism.
 biosafety_risk:
   risk_min_length: 21       # Size of an siRNA. Matches smaller than this are ignored.
-  risk_min_identity: 85.0   # % Identity. 85% allows ~3 mismatches in 21bp (Conservative).
+  risk_min_identity: 91.0   # % Identity. 85% allows ~3 mismatches in 21bp (Conservative).
                             # If a match is >21bp AND >85% identical, it is REJECTED.
   
   # Technical BLAST params for Biosafety (Do not change unless expert)
   blast_evalue: 1000        # High E-value to capture short, poor alignments (Safety first)
-  blast_word_size: 7        # Small word size to find short matches
+  blast_word_size: 11       # Small word size to find short matches
 
 # --- 6. FUNCTIONAL FILTER (Blacklist) ---
 # Terms to exclude based on protein description (e.g., Housekeeping genes).
@@ -84,7 +87,10 @@ blacklist_terms:
   - "chaperone"
   - "hsp70"
   - "gapdh"
+  - "glyceraldehyde-3-phosphate"
   - "synthase subunit"
+  # Nota: 'synthase subunit' pega ATP synthase e Citrate synthase, 
+  # mas cuidado para não pegar quitina sintase (geralmente não tem 'subunit' no nome)
 
 # --- 7. EXTERNAL TOOLS PATHS ---
 # If these are in your system PATH, leave as is. Otherwise, provide full path.
