@@ -1,0 +1,95 @@
+# ==============================================================================
+# RNAi Target Discovery Pipeline - Configuration File
+# ==============================================================================
+# Use this file to adjust all parameters for the pipeline execution.
+# ==============================================================================
+
+# --- PROJECT SETTINGS ---
+project_name: "Colletotrichum_RNAi_Project"
+output_directory: "results"  # Folder where all outputs will be saved
+
+# --- 1. INPUT SPECIES (Target Pathogen) ---
+# The main species you want to kill/control.
+main_species: "Colletotrichum abscissum"
+
+# List of related species to find CONSERVED regions.
+# The pipeline will only select regions present in ALL species listed here.
+# This ensures broad-spectrum activity within the genus.
+conservation_targets:
+  - "Colletotrichum abscissum"
+  - "Colletotrichum gloeosporioides"
+  - "Colletotrichum nymphaeae"
+  - "Colletotrichum godetiae"
+  - "Colletotrichum fioriniae"
+
+# --- 2. BIOSAFETY (Off-Target Analysis) ---
+# List of non-target organisms (plants, pollinators, humans).
+# Any candidate matching these genomes will be REJECTED.
+off_target_species:
+  - "Citrus sinensis"       # Host Plant 1
+  - "Citrus clementina"     # Host Plant 2
+  - "Apis mellifera"        # Honey Bee
+  - "Bombus terrestris"     # Bumblebee
+  - "Homo sapiens"          # Human
+  - "Harmonia axyridis"     # Ladybug (Predator)
+  - "Chrysoperla carnea"    # Lacewing (Predator)
+  - "Nasonia vitripennis"   # Parasitoid Wasp
+  - "Caenorhabditis elegans"# Soil Nematode model
+  - "Danio rerio"           # Zebrafish (Aquatic model)
+
+# --- 3. BLAST PARAMETERS (Ortholog Finding) ---
+# Used to find the same gene across the conservation_targets.
+blast_orthologs:
+  evalue: 1e-10             # Strict E-value for gene orthology
+  perc_identity: 70.0       # Min % identity to consider it the "same gene"
+  min_coverage: 50.0        # Min % query coverage
+  num_threads: 4            # CPU threads to use
+
+# --- 4. CONSERVED REGION FINDER ---
+# Parameters to scan the Multiple Sequence Alignment (MSA).
+conservation_scan:
+  min_conserved_length: 60  # Minimum dsRNA length (bp). Industry standard is >60bp.
+  conservation_threshold: 100 # Percent match required across all fungi (100 = identical)
+
+# --- 5. BIOSAFETY THRESHOLDS (The "Risk" Definition) ---
+# These parameters define what constitutes a "dangerous match" in off-target species.
+# Based on RNAi biology mechanism.
+biosafety_risk:
+  risk_min_length: 21       # Size of an siRNA. Matches smaller than this are ignored.
+  risk_min_identity: 85.0   # % Identity. 85% allows ~3 mismatches in 21bp (Conservative).
+                            # If a match is >21bp AND >85% identical, it is REJECTED.
+  
+  # Technical BLAST params for Biosafety (Do not change unless expert)
+  blast_evalue: 1000        # High E-value to capture short, poor alignments (Safety first)
+  blast_word_size: 7        # Small word size to find short matches
+
+# --- 6. FUNCTIONAL FILTER (Blacklist) ---
+# Terms to exclude based on protein description (e.g., Housekeeping genes).
+# Even if molecularly safe, these are often regulatory red flags.
+blacklist_terms:
+  - "ribosom"
+  - "actin"
+  - "tubulin"
+  - "histone"
+  - "ubiquitin"
+  - "elongation factor"
+  - "atp synthase"
+  - "dynein"
+  - "myosin"
+  - "kinase"
+  - "phosphatase"
+  - "polymerase"
+  - "dehydrogenase"
+  - "heat shock"
+  - "chaperone"
+  - "hsp70"
+  - "gapdh"
+  - "synthase subunit"
+
+# --- 7. EXTERNAL TOOLS PATHS ---
+# If these are in your system PATH, leave as is. Otherwise, provide full path.
+tools:
+  clustal_path: "clustalo"  # or "/usr/bin/clustalo"
+  blastn_path: "blastn"
+  makeblastdb_path: "makeblastdb"
+  datasets_path: "datasets" # NCBI Datasets CLI
