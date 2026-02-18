@@ -104,21 +104,20 @@ All results are saved in the `results/` folder (or whatever you defined in `conf
 ```text
 results/
 ├── 01_genomes/             # Downloaded FASTA files
-├── 02_blast_db/            # Local BLAST databases
-├── 03_orthologs/           # CSV files with orthologous gene matches
-├── 04_alignments/          # Clustal Omega alignments (.fasta)
-├── 05_conserved_regions/   # Raw list of conserved sequences
-├── 06_biosafety_check/     # BLAST results against non-targets
-└── 07_final_report/        # FINAL RESULTS
+├── 02_orthologs/           # CSV files with orthologous gene matches
+├── 03_alignments/          # Clustal Omega alignments (.fasta)
+├── 04_conserved_regions/   # Raw list of conserved sequences
+├── 05_biosafety_check/     # BLAST results against non-targets
+└── 06_final_report/        # FINAL RESULTS
+    ├── FINAL_CANDIDATES_ANNOTATED.csv   # Raw list of molecularly safe IDs
     ├── TARGETS_GOLD_PREMIUM.csv         # <--- START HERE (Approved candidates)
-    ├── TARGETS_REJECTED_FUNCTIONAL.csv  # Candidates rejected due to function (e.g., Actin)
-    └── SAFE_targets_final.csv           # Raw list of molecularly safe IDs
+    └── TARGETS_REJECTED_FUNCTIONAL.csv  # Candidates rejected due to function (e.g., Actin)
 ```
 
 ### Interpreting the Results
 
 * **`TARGETS_GOLD_PREMIUM.csv`**: Contains the best candidates. These genes are:
-    1.  Conserved across all target fungi.
+    1.  **Conserved** across all target fungi.
     2.  **Safe** (No significant homology to plants/bees/humans).
     3.  **Specific** (Not generic housekeeping genes like Ribosomes).
 * **`TARGETS_REJECTED_FUNCTIONAL.csv`**: Genes that are molecularly safe but biologically risky (e.g., *Actin*, *Tubulin*). Use with caution.

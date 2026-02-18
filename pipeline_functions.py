@@ -365,7 +365,7 @@ def find_orthologs_blast(config, input_folder, output_folder):
         ]
         
         try:
-            subprocess.run(cmd_blast, check=True)
+            subprocess.run(cmd_blast, check=True, stderr=subprocess.DEVNULL)
             print(" OK")
             
             # 5. Process Results
@@ -519,8 +519,7 @@ def perform_multiple_alignment(config, blast_results_input_folder, genomes_input
     for i, (query_id, members) in enumerate(gene_groups.items()):
         
         # Progress Log
-        if i % 10 == 0:
-            print(f"   [{get_timestamp()}] Progress: {i}/{total_groups} aligned...", end="\r")
+        print(f"   [{get_timestamp()}] Progress: {i}/{total_groups} aligned...", end="\r")
 
         # Collect SeqRecords
         sequences_to_align = []

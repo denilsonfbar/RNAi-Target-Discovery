@@ -20,15 +20,14 @@ def main():
     # --- SETUP DIRECTORIES ---
     base_out = config['output_directory']
     
-    # NOVAS PASTAS SEPARADAS
+    # --- PIPELINE STEPS FOLDERS ---
     genome_cons_folder = os.path.join(base_out, "01_genomes", "conservation")
     genome_bio_folder = os.path.join(base_out, "01_genomes", "biosafety")
-    
-    blast_results_folder = os.path.join(base_out, "03_orthologs")
-    msa_out_folder = os.path.join(base_out, "04_alignments")
-    conserved_out_folder = os.path.join(base_out, "05_conserved_regions")
-    biosafety_out_folder = os.path.join(base_out, "06_biosafety_check")
-    final_report_folder = os.path.join(base_out, "07_final_report")
+    blast_results_folder = os.path.join(base_out, "02_orthologs")
+    msa_out_folder = os.path.join(base_out, "03_alignments")
+    conserved_out_folder = os.path.join(base_out, "04_conserved_regions")
+    biosafety_out_folder = os.path.join(base_out, "05_biosafety_check")
+    final_report_folder = os.path.join(base_out, "06_final_report")
 
     # --- STEP 1: Download Genomes (Split Strategy) ---
     
@@ -38,7 +37,7 @@ def main():
     if config['main_species'] not in cons_species_list:
         cons_species_list.append(config['main_species'])
     
-    print(f"\n[{steps.get_timestamp()}] === STEP 1a: Downloading Fungal Genomes (Conservation) ===")
+    print(f"\n[{steps.get_timestamp()}] === STEP 1a: Downloading Pathogens Genomes (Conservation) ===")
     steps.download_species_cds(
         {"species_list": cons_species_list}, 
         genome_cons_folder  # Salva na subpasta conservation
@@ -107,7 +106,7 @@ def main():
     
     # Carrega a blacklist do config ou usa padrão
     blacklist = config.get('blacklist_terms', None)
-    steps.apply_text_biosafety_filter(annotated_csv, final_report_folder, blacklist_list=blacklist)
+    steps.apply_text_biosafety_filter(final_report_folder, final_report_folder, blacklist_list=blacklist)
 
     print(f"\n[{datetime.now()}] PIPELINE FINISHED SUCCESSFULLY.")
 

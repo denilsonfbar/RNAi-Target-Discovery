@@ -63,7 +63,7 @@ biosafety_risk:
                             # If a match is >21bp AND >85% identical, it is REJECTED.
   
   # Technical BLAST params for Biosafety (Do not change unless expert)
-  blast_evalue: 1000        # High E-value to capture short, poor alignments (Safety first)
+  blast_evalue: 10000       # High E-value to capture short, poor alignments (Safety first)
   blast_word_size: 11       # Small word size to find short matches
 
 # --- 6. FUNCTIONAL FILTER (Blacklist) ---
