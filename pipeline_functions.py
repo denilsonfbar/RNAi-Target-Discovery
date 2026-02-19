@@ -578,8 +578,8 @@ def perform_multiple_alignment(config, blast_results_input_folder, genomes_input
 
 def find_conserved_regions(config, msa_input_folder, output_folder):
     """
-    Scans MSA files using a Sliding Window approach.
-    FIX: Now includes Start-End positions in FASTA headers to avoid duplicates.
+    Scans MSA files using an Exhaustive Sliding Window + Non-Maximum Suppression.
+    Ensures global optima are found without overlapping/redundant targets.
     """
     
     # 1. Setup
@@ -592,7 +592,7 @@ def find_conserved_regions(config, msa_input_folder, output_folder):
     
     msa_files = sorted(glob(os.path.join(msa_input_folder, "*.fasta")) + glob(os.path.join(msa_input_folder, "*.aln")))
     
-    print(f"[{get_timestamp()}] Scanning {len(msa_files)} alignments...")
+    print(f"[{get_timestamp()}] Scanning {len(msa_files)} alignments (Exhaustive NMS Algorithm)...")
     
     targets_found = []
     
@@ -603,7 +603,7 @@ def find_conserved_regions(config, msa_input_folder, output_folder):
             alignment = AlignIO.read(msa_file, "fasta")
             aln_len = alignment.get_alignment_length()
             
-            # Step A: Consensus Mask
+            # Step A: Consensus Mask (Biologia por Frequência/Maioria)
             consensus_mask = []
             consensus_seq = []
             for i in range(aln_len):
@@ -614,16 +614,15 @@ def find_conserved_regions(config, msa_input_folder, output_folder):
                     consensus_seq.append('N')
                 elif len(unique_bases) == 1:
                     consensus_mask.append(1)
-                    consensus_seq.append(col[0]) # É tudo igual, pega a primeira
+                    consensus_seq.append(col[0]) 
                 else:
                     consensus_mask.append(0)
-                    # Biologia + Determinismo: Conta a frequência de cada letra
                     counts = Counter(col)
-                    # Ordena primeiro pela Frequência (Maioria) e desempata por Ordem Alfabética
                     best_base = sorted(counts.items(), key=lambda x: (-x[1], x[0]))[0][0]
                     consensus_seq.append(best_base)
 
-            # Step B: Sliding Window
+            # Step B: Exhaustive Search (Varredura de TODAS as posições)
+            gene_candidates = []
             i = 0
             while i <= aln_len - min_len:
                 window = consensus_mask[i : i + min_len]
@@ -632,6 +631,7 @@ def find_conserved_regions(config, msa_input_folder, output_folder):
                 
                 if identity >= threshold_ratio:
                     current_end = i + min_len 
+                    # Tenta estender ao máximo possível à direita
                     while current_end < aln_len:
                         next_val = consensus_mask[current_end]
                         new_matches = matches + next_val
@@ -649,7 +649,7 @@ def find_conserved_regions(config, msa_input_folder, output_folder):
                     final_matches = sum(consensus_mask[i : current_end])
                     block_identity = (final_matches / final_len) * 100
                     
-                    targets_found.append({
+                    gene_candidates.append({
                         "gene_id": gene_id,
                         "start_pos": i,
                         "end_pos": current_end - 1,
@@ -658,16 +658,46 @@ def find_conserved_regions(config, msa_input_folder, output_folder):
                         "sequence": block_seq,
                         "source_file": filename
                     })
-                    i = current_end
-                else:
-                    i += 1
+                
+                # AVANÇO ESTRITO (Sem saltos gulosos)
+                i += 1
+
+            # Step C: Non-Maximum Suppression (Filtragem Estrita)
+            if gene_candidates:
+                # 1. Ordena todos os candidatos deste gene pelo mérito (Maior para Menor)
+                # Chave de desempate: -tamanho, -identidade, +posição inicial (determinismo total)
+                gene_candidates.sort(key=lambda x: (-x["length"], -x["identity"], x["start_pos"]))
+                
+                accepted_for_gene = []
+                
+                # 2. Varre os candidatos do melhor para o pior
+                for cand in gene_candidates:
+                    c_start = cand["start_pos"]
+                    c_end = cand["end_pos"]
+                    
+                    overlap = False
+                    # Compara com os que já foram "aprovados" para este gene
+                    for acc in accepted_for_gene:
+                        a_start = acc["start_pos"]
+                        a_end = acc["end_pos"]
+                        
+                        # Lógica de intersecção: se (Inicio A <= Fim B) E (Inicio B <= Fim A), há sobreposição
+                        if not (c_end < a_start or c_start > a_end):
+                            overlap = True
+                            break
+                    
+                    # Se for uma "ilha" 100% isolada das já aprovadas, ele ganha a vaga
+                    if not overlap:
+                        accepted_for_gene.append(cand)
+                        targets_found.append(cand)
 
         except Exception as e:
             print(f"[{get_timestamp()}] Error processing {msa_file}: {e}")
 
-    # 2. Save Results
+    # Step D: Save Results
     if targets_found:
         df = pd.DataFrame(targets_found)
+        # Ordenação absoluta do DataFrame de saída
         df = df.sort_values(["length", "identity", "gene_id", "start_pos"], ascending=[False, False, True, True])
         
         csv_path = os.path.join(output_folder, "conserved_targets.csv")
@@ -676,7 +706,6 @@ def find_conserved_regions(config, msa_input_folder, output_folder):
         fasta_path = os.path.join(output_folder, "conserved_targets.fasta")
         with open(fasta_path, "w") as f:
             for idx, row in df.iterrows():
-                # --- CORREÇÃO AQUI: Adicionado '_posX-Y' para garantir unicidade ---
                 header = f">{row['gene_id']}_len{row['length']}_id{row['identity']}_pos{row['start_pos']}-{row['end_pos']}"
                 f.write(f"{header}\n{row['sequence']}\n")
         
@@ -913,6 +942,7 @@ def generate_annotated_report(config, final_targets_input_folder, conserved_targ
     print(f"[{get_timestamp()}] 📊 Report saved: {csv_out}")
     
     print(f"[{get_timestamp()}] ✅ Done! You have {len(final_df)} annotated candidates ready for synthesis.")
+
 
 def apply_text_biosafety_filter(input_folder, output_folder, blacklist_list=None):
     """
