@@ -9,6 +9,7 @@ import pandas as pd
 from Bio import SeqIO
 import json
 from Bio import AlignIO
+from collections import Counter
 
 
 def find_key_recursive(obj, key_target):
@@ -360,8 +361,7 @@ def find_orthologs_blast(config, input_folder, output_folder):
             "-outfmt", cols,
             "-evalue", str(config['evalue']),
             "-perc_identity", str(config['perc_identity']),
-            "-num_threads", str(config['num_threads']),
-            "-max_target_seqs", "5" 
+            "-num_threads", str(config['num_threads'])
         ]
         
         try:
@@ -373,8 +373,8 @@ def find_orthologs_blast(config, input_folder, output_folder):
                 col_names = ["qseqid", "sseqid", "pident", "length", "evalue", "bitscore", "qlen", "slen"]
                 df = pd.read_csv(temp_blast_out, sep="\t", names=col_names)
           
-                # Ordena por Score (decrescente) E depois por ID (crescente) para desempatar
-                df = df.sort_values(by=["bitscore", "sseqid"], ascending=[False, True])
+                # Desempate absoluto: Score -> Identidade -> Tamanho -> Ordem Alfabética
+                df = df.sort_values(by=["bitscore", "pident", "length", "sseqid"], ascending=[False, False, False, True])
                 df = df.drop_duplicates(subset=["qseqid"])
 
                 # Calculate Coverage
@@ -466,7 +466,7 @@ def perform_multiple_alignment(config, blast_results_input_folder, genomes_input
     # 3. Group Hits by Query Gene
     gene_groups = {}
     
-    csv_files = [f for f in os.listdir(blast_results_input_folder) if f.endswith(".csv")]
+    csv_files = sorted([f for f in os.listdir(blast_results_input_folder) if f.endswith(".csv")])
     print(f"[{get_timestamp()}] Parsing {len(csv_files)} BLAST result files...")
 
     for csv_file in csv_files:
@@ -590,7 +590,7 @@ def find_conserved_regions(config, msa_input_folder, output_folder):
     threshold_pct = config.get("conservation_threshold", 100)
     threshold_ratio = threshold_pct / 100.0
     
-    msa_files = glob(os.path.join(msa_input_folder, "*.fasta")) + glob(os.path.join(msa_input_folder, "*.aln"))
+    msa_files = sorted(glob(os.path.join(msa_input_folder, "*.fasta")) + glob(os.path.join(msa_input_folder, "*.aln")))
     
     print(f"[{get_timestamp()}] Scanning {len(msa_files)} alignments...")
     
@@ -599,7 +599,7 @@ def find_conserved_regions(config, msa_input_folder, output_folder):
     for msa_file in msa_files:
         try:
             filename = os.path.basename(msa_file)
-            gene_id = filename.replace("msa_", "").split(".")[0]
+            gene_id = os.path.splitext(filename.replace("msa_", ""))[0]
             alignment = AlignIO.read(msa_file, "fasta")
             aln_len = alignment.get_alignment_length()
             
@@ -607,17 +607,21 @@ def find_conserved_regions(config, msa_input_folder, output_folder):
             consensus_mask = []
             consensus_seq = []
             for i in range(aln_len):
-                col = alignment[:, i]
-                unique_bases = set(col.upper())
+                col = alignment[:, i].upper()
+                unique_bases = set(col)
                 if '-' in unique_bases or 'N' in unique_bases:
                     consensus_mask.append(0)
                     consensus_seq.append('N')
                 elif len(unique_bases) == 1:
                     consensus_mask.append(1)
-                    consensus_seq.append(list(unique_bases)[0])
+                    consensus_seq.append(col[0]) # É tudo igual, pega a primeira
                 else:
                     consensus_mask.append(0)
-                    consensus_seq.append(list(unique_bases)[0])
+                    # Biologia + Determinismo: Conta a frequência de cada letra
+                    counts = Counter(col)
+                    # Ordena primeiro pela Frequência (Maioria) e desempata por Ordem Alfabética
+                    best_base = sorted(counts.items(), key=lambda x: (-x[1], x[0]))[0][0]
+                    consensus_seq.append(best_base)
 
             # Step B: Sliding Window
             i = 0
@@ -664,7 +668,7 @@ def find_conserved_regions(config, msa_input_folder, output_folder):
     # 2. Save Results
     if targets_found:
         df = pd.DataFrame(targets_found)
-        df = df.sort_values(["length", "identity"], ascending=[False, False])
+        df = df.sort_values(["length", "identity", "gene_id", "start_pos"], ascending=[False, False, True, True])
         
         csv_path = os.path.join(output_folder, "conserved_targets.csv")
         df.to_csv(csv_path, index=False)
@@ -883,16 +887,9 @@ def generate_annotated_report(config, final_targets_input_folder, conserved_targ
     # --- FIX DE DESCRIÇÃO: Usar 'source_file' para obter o ID Completo ---
     
     def get_description_from_row(row):
-        # O 'gene_id' na tabela está cortado (lcl|NW_...).
-        # O 'source_file' tem o nome completo: msa_lcl|NW_026850132.1_cds_XP_060400081.1_6396.fasta
         
-        filename = row['source_file']
-        
-        # 1. Remove extensão (.fasta, .aln) e prefixo (msa_)
-        # os.path.splitext remove a última extensão
-        base_name = os.path.splitext(filename)[0] 
-        full_gene_id = base_name.replace("msa_", "")
-        
+        full_gene_id = row['gene_id']
+
         # 2. Tenta buscar este ID completo no dicionário
         desc = gene_descriptions.get(full_gene_id)
         
