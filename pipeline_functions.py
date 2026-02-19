@@ -361,11 +361,11 @@ def find_orthologs_blast(config, input_folder, output_folder):
             "-evalue", str(config['evalue']),
             "-perc_identity", str(config['perc_identity']),
             "-num_threads", str(config['num_threads']),
-            "-max_target_seqs", "1" 
+            "-max_target_seqs", "5" 
         ]
         
         try:
-            subprocess.run(cmd_blast, check=True, stderr=subprocess.DEVNULL)
+            subprocess.run(cmd_blast, check=True)
             print(" OK")
             
             # 5. Process Results
@@ -373,9 +373,9 @@ def find_orthologs_blast(config, input_folder, output_folder):
                 col_names = ["qseqid", "sseqid", "pident", "length", "evalue", "bitscore", "qlen", "slen"]
                 df = pd.read_csv(temp_blast_out, sep="\t", names=col_names)
           
-                # Ordena pelo melhor score e remove duplicatas do mesmo gene Query
-                # Isso garante que cada gene da espécie principal apareça apenas UMA vez na tabela
-                df = df.sort_values("bitscore", ascending=False).drop_duplicates(subset=["qseqid"])      
+                # Ordena por Score (decrescente) E depois por ID (crescente) para desempatar
+                df = df.sort_values(by=["bitscore", "sseqid"], ascending=[False, True])
+                df = df.drop_duplicates(subset=["qseqid"])
 
                 # Calculate Coverage
                 df["coverage"] = (df["length"] / df["qlen"]) * 100
@@ -534,6 +534,9 @@ def perform_multiple_alignment(config, blast_results_input_folder, genomes_input
                 record.id = f"{sp}|{gene}"
                 record.description = "" 
                 sequences_to_align.append(record)
+        
+        # Ordena as sequências pelo ID antes de alinhar para garantir determinismo no Clustal
+        sequences_to_align.sort(key=lambda x: x.id)
 
         # Se alguma sequência falhou em carregar (erro raro), pula
         if len(sequences_to_align) < total_expected_species:
@@ -761,6 +764,9 @@ def check_biosafety(config, targets_input_folder, genomes_input_folder, output_f
         if os.path.exists(blast_out) and os.path.getsize(blast_out) > 0:
             df = pd.read_csv(blast_out, sep="\t", names=["qseqid", "sseqid", "pident", "length", "evalue"])
             
+            # For determinism
+            df = df.sort_values(by=["qseqid", "sseqid", "pident"], ascending=[True, True, False])
+
             # CRITERIA FOR DANGER
             risk_len = config.get("risk_min_length", 19) 
             risk_id = config.get("risk_min_identity", 80.0)
