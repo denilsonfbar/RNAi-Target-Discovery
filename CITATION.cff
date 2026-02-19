@@ -5,7 +5,7 @@ authors:
   given-names: "Denilson Fagundes"
   orcid: "https://orcid.org/0000-0002-6104-1987"
 title: "RNAi Target Discovery Pipeline"
-version: 0.1.1
+version: 0.1.2
 date-released: 2026-02-18
 url: "https://github.com/denilsonfbar/RNAi-Target-Discovery"
 keywords:
